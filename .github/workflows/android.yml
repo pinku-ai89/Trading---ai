@@ -1,0 +1,153 @@
+name: Build Trader Pink AI APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create Android project
+        run: |
+          mkdir -p android/app/src/main/java/com/traderpink/ai
+          mkdir -p android/app/src/main/res/values
+
+          cat > android/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "TraderPinkAI"
+          include(":app")
+          EOF
+
+          cat > android/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+          }
+          EOF
+
+          cat > android/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.traderpink.ai'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.traderpink.ai'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName "1.0.0"
+              }
+          }
+          EOF
+
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET"/>
+
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="Trader Pink AI"
+                  android:allowBackup="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+
+                  </activity>
+
+              </application>
+          </manifest>
+          EOF
+
+          cat > android/app/src/main/res/values/styles.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:windowActionModeOverlay">true</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > android/app/src/main/java/com/traderpink/ai/MainActivity.java <<'EOF'
+          package com.traderpink.ai;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.widget.TextView;
+
+          public class MainActivity extends Activity {
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  TextView view = new TextView(this);
+                  view.setText(
+                      "🤖 Trader Pink AI\n\n" +
+                      "EURUSD • 1 MIN\n\n" +
+                      "⏳ WAIT"
+                  );
+                  view.setTextSize(22);
+                  view.setPadding(40, 60, 40, 40);
+
+                  setContentView(view);
+              }
+          }
+          EOF
+
+      - name: Download Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trader-Pink-AI-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
