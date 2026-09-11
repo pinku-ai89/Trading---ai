@@ -2,9 +2,6 @@ name: Build Trader Pink AI APK
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'android/**'
 
 jobs:
   build:
@@ -103,7 +100,8 @@ jobs:
           cat > android/app/src/main/res/values/styles.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+              <style name="AppTheme"
+                  parent="android:style/Theme.Material.Light.NoActionBar">
                   <item name="android:fontFamily">sans</item>
                   <item name="android:windowActionModeOverlay">true</item>
               </style>
@@ -124,11 +122,13 @@ jobs:
                   super.onCreate(savedInstanceState);
 
                   TextView view = new TextView(this);
+
                   view.setText(
                       "🤖 Trader Pink AI\n\n" +
                       "EURUSD • 1 MIN\n\n" +
                       "⏳ WAIT"
                   );
+
                   view.setTextSize(22);
                   view.setPadding(40, 60, 40, 40);
 
@@ -137,7 +137,7 @@ jobs:
           }
           EOF
 
-      - name: Download Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
