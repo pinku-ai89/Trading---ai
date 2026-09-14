@@ -9,10 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: android-app/android-app
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,10 +25,11 @@ jobs:
           gradle-version: "8.7"
 
       - name: Build APK
-        run: gradle assembleDebug
+        working-directory: android-app/android-app/app/app/android-app/android-app
+        run: gradle :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Trader-Pink-Forex-AI
-          path: app/build/outputs/apk/debug/*.apk
+          path: android-app/android-app/app/app/android-app/android-app/app/build/outputs/apk/debug/*.apk
