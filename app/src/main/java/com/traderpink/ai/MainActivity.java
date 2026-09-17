@@ -37,7 +37,12 @@ public class MainActivity extends Activity {
         text = new TextView(this);
         text.setTextSize(18);
         text.setPadding(30, 40, 30, 40);
-        text.setText("🤖 Trader Pink AI\n\nLoading EURUSD analysis...");
+
+        text.setText(
+                "🤖 Trader Pink AI\n\n" +
+                "EURUSD • 1 MIN\n\n" +
+                "Loading analysis..."
+        );
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.addView(text);
@@ -48,11 +53,15 @@ public class MainActivity extends Activity {
     }
 
     private void loadSignal() {
+
         new Thread(() -> {
+
             HttpURLConnection connection = null;
 
             try {
+
                 URL url = new URL(API_URL);
+
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(10000);
@@ -73,9 +82,12 @@ public class MainActivity extends Activity {
                 }
 
                 BufferedReader reader =
-                        new BufferedReader(new InputStreamReader(stream));
+                        new BufferedReader(
+                                new InputStreamReader(stream)
+                        );
 
                 StringBuilder result = new StringBuilder();
+
                 String line;
 
                 while ((line = reader.readLine()) != null) {
@@ -88,32 +100,68 @@ public class MainActivity extends Activity {
                     throw new Exception("HTTP " + responseCode);
                 }
 
-                JSONObject json = new JSONObject(result.toString());
+                JSONObject json =
+                        new JSONObject(result.toString());
 
-                final String signal = json.optString("signal", "WAIT");
+                // ==============================
+                // FINAL 1M SIGNAL
+                // ==============================
+
+                final String signal =
+                        json.optString("signal", "WAIT");
+
                 final String confidence =
                         json.optString("confidence", "--");
+
                 final String trend =
                         json.optString("trend", "--");
 
+                // ==============================
+                // PRICE LEVELS
+                // ==============================
+
                 final String support =
                         json.optString("support", "--");
+
                 final String resistance =
                         json.optString("resistance", "--");
 
+                // ==============================
+                // INDICATORS
+                // ==============================
+
                 final String rsi =
                         json.optString("rsi", "--");
+
                 final String adx =
                         json.optString("adx", "--");
 
-                final String m1 =
-                        json.optString("1M", "--");
+                // ==============================
+                // CONFIRMATION
+                // 5M / 15M / 1H ONLY
+                // ==============================
+
+                JSONObject confirmation =
+                        json.optJSONObject("confirmation");
+
                 final String m5 =
-                        json.optString("5M", "--");
+                        confirmation != null
+                                ? confirmation.optString("5M", "--")
+                                : "--";
+
                 final String m15 =
-                        json.optString("15M", "--");
+                        confirmation != null
+                                ? confirmation.optString("15M", "--")
+                                : "--";
+
                 final String h1 =
-                        json.optString("1H", "--");
+                        confirmation != null
+                                ? confirmation.optString("1H", "--")
+                                : "--";
+
+                // ==============================
+                // CLOSED CANDLE
+                // ==============================
 
                 final String closedCandle =
                         json.optString("closed_candle", "--");
@@ -121,30 +169,93 @@ public class MainActivity extends Activity {
                 final String candleTime =
                         json.optString("candle_time", "--");
 
+                // ==============================
+                // STRUCTURE
+                // ==============================
+
+                final String structure =
+                        json.optString("structure", "--");
+
+                final String liquidity =
+                        json.optString("liquidity", "--");
+
+                final String fvg =
+                        json.optString("fvg", "--");
+
+                final String candlePattern =
+                        json.optString("candle_pattern", "--");
+
+                // ==============================
+                // MESSAGE
+                // ==============================
+
+                final String message =
+                        json.optString("message", "");
+
+                // ==============================
+                // SHOW ON SCREEN
+                // ==============================
+
                 runOnUiThread(() -> {
 
                     String display =
+
                             "🤖 Trader Pink AI\n\n" +
+
                             "EURUSD • 1 MIN\n\n" +
 
-                            "SIGNAL: " + signal + "\n" +
-                            "CONFIDENCE: " + confidence + "\n" +
-                            "TREND: " + trend + "\n\n" +
+                            "FINAL SIGNAL: " +
+                            signal + "\n" +
 
-                            "SUPPORT: " + support + "\n" +
-                            "RESISTANCE: " + resistance + "\n\n" +
+                            "CONFIDENCE: " +
+                            confidence + "\n" +
 
-                            "RSI: " + rsi + "\n" +
-                            "ADX: " + adx + "\n\n" +
+                            "TREND: " +
+                            trend + "\n\n" +
 
-                            "TIMEFRAME CONFIRMATION\n" +
-                            "1M  : " + m1 + "\n" +
-                            "5M  : " + m5 + "\n" +
-                            "15M : " + m15 + "\n" +
-                            "1H  : " + h1 + "\n\n" +
+                            "SUPPORT: " +
+                            support + "\n" +
 
-                            "CLOSED CANDLE: " + closedCandle + "\n" +
-                            "CANDLE TIME: " + candleTime;
+                            "RESISTANCE: " +
+                            resistance + "\n\n" +
+
+                            "RSI: " +
+                            rsi + "\n" +
+
+                            "ADX: " +
+                            adx + "\n\n" +
+
+                            "CONFIRMATION / ANALYSIS\n" +
+
+                            "5M  : " +
+                            m5 + "\n" +
+
+                            "15M : " +
+                            m15 + "\n" +
+
+                            "1H  : " +
+                            h1 + "\n\n" +
+
+                            "STRUCTURE: " +
+                            structure + "\n" +
+
+                            "LIQUIDITY: " +
+                            liquidity + "\n" +
+
+                            "FVG: " +
+                            fvg + "\n" +
+
+                            "CANDLE PATTERN: " +
+                            candlePattern + "\n\n" +
+
+                            "MESSAGE: " +
+                            message + "\n\n" +
+
+                            "CLOSED CANDLE: " +
+                            closedCandle + "\n" +
+
+                            "CANDLE TIME: " +
+                            candleTime;
 
                     text.setText(display);
                 });
@@ -152,25 +263,36 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
 
                 final String error =
+
                         "🤖 Trader Pink AI\n\n" +
+
                         "EURUSD • 1 MIN\n\n" +
-                        "WAIT\n\n" +
+
+                        "FINAL SIGNAL: WAIT\n\n" +
+
                         "Connection error:\n" +
+
                         e.getMessage();
 
-                runOnUiThread(() -> text.setText(error));
+                runOnUiThread(() ->
+                        text.setText(error)
+                );
 
             } finally {
+
                 if (connection != null) {
                     connection.disconnect();
                 }
             }
+
         }).start();
     }
 
     @Override
     protected void onDestroy() {
+
         handler.removeCallbacks(refreshTask);
+
         super.onDestroy();
     }
 }
