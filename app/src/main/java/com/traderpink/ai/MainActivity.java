@@ -1,8 +1,12 @@
 package com.traderpink.ai;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.Gravity;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -23,20 +27,92 @@ public class MainActivity extends Activity {
     private TextView text;
 
     private final Runnable refreshTask = new Runnable() {
+
         @Override
         public void run() {
+
             loadSignal();
-            handler.postDelayed(this, 30000);
+
+            handler.postDelayed(
+                    this,
+                    30000
+            );
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
+        buildScreen();
+
+        loadSignal();
+
+        handler.postDelayed(
+                refreshTask,
+                30000
+        );
+    }
+
+    private void buildScreen() {
+
+        LinearLayout root =
+                new LinearLayout(this);
+
+        root.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        root.setPadding(
+                0,
+                0,
+                0,
+                10
+        );
+
+        Button marketButton =
+                new Button(this);
+
+        marketButton.setText(
+                "📊 MARKET VIEW"
+        );
+
+        marketButton.setTextSize(16);
+
+        marketButton.setOnClickListener(
+                v -> {
+
+                    Intent intent =
+                            new Intent(
+                                    MainActivity.this,
+                                    MarketActivity.class
+                            );
+
+                    startActivity(intent);
+                }
+        );
+
+        ScrollView scrollView =
+                new ScrollView(this);
+
+        LinearLayout content =
+                new LinearLayout(this);
+
+        content.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
         text = new TextView(this);
+
         text.setTextSize(18);
-        text.setPadding(30, 40, 30, 40);
+
+        text.setPadding(
+                30,
+                40,
+                30,
+                40
+        );
 
         text.setText(
                 "🤖 Trader Pink AI\n\n" +
@@ -44,12 +120,32 @@ public class MainActivity extends Activity {
                 "Loading analysis..."
         );
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.addView(text);
-        setContentView(scrollView);
+        content.addView(
+                text
+        );
 
-        loadSignal();
-        handler.postDelayed(refreshTask, 30000);
+        scrollView.addView(
+                content
+        );
+
+        root.addView(
+                scrollView,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1
+                )
+        );
+
+        root.addView(
+                marketButton,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+        );
+
+        setContentView(root);
     }
 
     private void loadSignal() {
@@ -60,82 +156,131 @@ public class MainActivity extends Activity {
 
             try {
 
-                URL url = new URL(API_URL);
+                URL url =
+                        new URL(API_URL);
 
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(10000);
+                connection =
+                        (HttpURLConnection)
+                                url.openConnection();
 
-                int responseCode = connection.getResponseCode();
+                connection.setRequestMethod(
+                        "GET"
+                );
+
+                connection.setConnectTimeout(
+                        10000
+                );
+
+                connection.setReadTimeout(
+                        10000
+                );
+
+                int responseCode =
+                        connection.getResponseCode();
 
                 InputStream stream;
 
-                if (responseCode >= 200 && responseCode < 300) {
-                    stream = connection.getInputStream();
+                if (responseCode >= 200 &&
+                        responseCode < 300) {
+
+                    stream =
+                            connection.getInputStream();
+
                 } else {
-                    stream = connection.getErrorStream();
+
+                    stream =
+                            connection.getErrorStream();
                 }
 
                 if (stream == null) {
-                    throw new Exception("No response from Worker");
+
+                    throw new Exception(
+                            "No response from Worker"
+                    );
                 }
 
                 BufferedReader reader =
                         new BufferedReader(
-                                new InputStreamReader(stream)
+                                new InputStreamReader(
+                                        stream
+                                )
                         );
 
-                StringBuilder result = new StringBuilder();
+                StringBuilder result =
+                        new StringBuilder();
 
                 String line;
 
-                while ((line = reader.readLine()) != null) {
+                while (
+                        (line = reader.readLine())
+                                != null
+                ) {
+
                     result.append(line);
                 }
 
                 reader.close();
 
-                if (responseCode < 200 || responseCode >= 300) {
-                    throw new Exception("HTTP " + responseCode);
+                if (responseCode < 200 ||
+                        responseCode >= 300) {
+
+                    throw new Exception(
+                            "HTTP " +
+                                    responseCode
+                    );
                 }
 
                 JSONObject json =
-                        new JSONObject(result.toString());
+                        new JSONObject(
+                                result.toString()
+                        );
 
                 final String signal =
-                        json.optString("signal", "WAIT");
+                        json.optString(
+                                "signal",
+                                "WAIT"
+                        );
 
                 final String confidence =
-                        json.optString("confidence", "--");
+                        json.optString(
+                                "confidence",
+                                "--"
+                        );
 
                 final String trend =
-                        json.optString("trend", "--");
+                        json.optString(
+                                "trend",
+                                "--"
+                        );
 
                 final String support =
-                        json.optString("support", "--");
+                        json.optString(
+                                "support",
+                                "--"
+                        );
 
                 final String resistance =
-                        json.optString("resistance", "--");
+                        json.optString(
+                                "resistance",
+                                "--"
+                        );
 
                 final String rsi =
-                        json.optString("rsi", "--");
+                        json.optString(
+                                "rsi",
+                                "--"
+                        );
 
                 final String adx =
-                        json.optString("adx", "--");
+                        json.optString(
+                                "adx",
+                                "--"
+                        );
 
-                /*
-                 * Worker confirmation object
-                 *
-                 * {
-                 *   "1M": "...",
-                 *   "5M": "...",
-                 *   "15M": "...",
-                 *   "1H": "..."
-                 * }
-                 */
                 JSONObject confirmation =
-                        json.optJSONObject("confirmation");
+                        json.optJSONObject(
+                                "confirmation"
+                        );
 
                 String m1 = "--";
                 String m5 = "--";
@@ -144,10 +289,29 @@ public class MainActivity extends Activity {
 
                 if (confirmation != null) {
 
-                    m1 = confirmation.optString("1M", "--");
-                    m5 = confirmation.optString("5M", "--");
-                    m15 = confirmation.optString("15M", "--");
-                    h1 = confirmation.optString("1H", "--");
+                    m1 =
+                            confirmation.optString(
+                                    "1M",
+                                    "--"
+                            );
+
+                    m5 =
+                            confirmation.optString(
+                                    "5M",
+                                    "--"
+                            );
+
+                    m15 =
+                            confirmation.optString(
+                                    "15M",
+                                    "--"
+                            );
+
+                    h1 =
+                            confirmation.optString(
+                                    "1H",
+                                    "--"
+                            );
                 }
 
                 final String finalM1 = m1;
@@ -156,25 +320,46 @@ public class MainActivity extends Activity {
                 final String finalH1 = h1;
 
                 final String closedCandle =
-                        json.optString("closed_candle", "--");
+                        json.optString(
+                                "closed_candle",
+                                "--"
+                        );
 
                 final String candleTime =
-                        json.optString("candle_time", "--");
+                        json.optString(
+                                "candle_time",
+                                "--"
+                        );
 
                 final String structure =
-                        json.optString("structure", "--");
+                        json.optString(
+                                "structure",
+                                "--"
+                        );
 
                 final String liquidity =
-                        json.optString("liquidity", "--");
+                        json.optString(
+                                "liquidity",
+                                "--"
+                        );
 
                 final String fvg =
-                        json.optString("fvg", "--");
+                        json.optString(
+                                "fvg",
+                                "--"
+                        );
 
                 final String candlePattern =
-                        json.optString("candle_pattern", "--");
+                        json.optString(
+                                "candle_pattern",
+                                "--"
+                        );
 
                 final String message =
-                        json.optString("message", "");
+                        json.optString(
+                                "message",
+                                ""
+                        );
 
                 runOnUiThread(() -> {
 
@@ -185,62 +370,81 @@ public class MainActivity extends Activity {
                             "EURUSD • 1 MIN\n\n" +
 
                             "SIGNAL: " +
-                            signal + "\n\n" +
+                            signal +
+                            "\n\n" +
 
                             "CONFIDENCE: " +
-                            confidence + "\n\n" +
+                            confidence +
+                            "\n\n" +
 
                             "TREND: " +
-                            trend + "\n\n" +
+                            trend +
+                            "\n\n" +
 
                             "SUPPORT: " +
-                            support + "\n" +
+                            support +
+                            "\n" +
 
                             "RESISTANCE: " +
-                            resistance + "\n\n" +
+                            resistance +
+                            "\n\n" +
 
                             "RSI: " +
-                            rsi + "\n" +
+                            rsi +
+                            "\n" +
 
                             "ADX: " +
-                            adx + "\n\n" +
+                            adx +
+                            "\n\n" +
 
                             "TIMEFRAME CONFIRMATION\n\n" +
 
                             "1M : " +
-                            finalM1 + "\n" +
+                            finalM1 +
+                            "\n" +
 
                             "5M : " +
-                            finalM5 + "\n" +
+                            finalM5 +
+                            "\n" +
 
                             "15M : " +
-                            finalM15 + "\n" +
+                            finalM15 +
+                            "\n" +
 
                             "1H : " +
-                            finalH1 + "\n\n" +
+                            finalH1 +
+                            "\n\n" +
 
                             "STRUCTURE: " +
-                            structure + "\n" +
+                            structure +
+                            "\n" +
 
                             "LIQUIDITY: " +
-                            liquidity + "\n" +
+                            liquidity +
+                            "\n" +
 
                             "FVG: " +
-                            fvg + "\n" +
+                            fvg +
+                            "\n" +
 
                             "CANDLE PATTERN: " +
-                            candlePattern + "\n\n" +
+                            candlePattern +
+                            "\n\n" +
 
                             "MESSAGE: " +
-                            message + "\n\n" +
+                            message +
+                            "\n\n" +
 
                             "CLOSED CANDLE: " +
-                            closedCandle + "\n\n" +
+                            closedCandle +
+                            "\n\n" +
 
                             "CANDLE TIME: " +
                             candleTime;
 
-                    text.setText(display);
+                    text.setText(
+                            display
+                    );
                 });
 
             } catch (Exception e) {
@@ -258,12 +462,15 @@ public class MainActivity extends Activity {
                         e.getMessage();
 
                 runOnUiThread(() ->
-                        text.setText(error)
+                        text.setText(
+                                error
+                        )
                 );
 
             } finally {
 
                 if (connection != null) {
+
                     connection.disconnect();
                 }
             }
@@ -274,7 +481,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
 
-        handler.removeCallbacks(refreshTask);
+        handler.removeCallbacks(
+                refreshTask
+        );
 
         super.onDestroy();
     }
