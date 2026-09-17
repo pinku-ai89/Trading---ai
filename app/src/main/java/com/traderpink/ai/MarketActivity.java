@@ -292,6 +292,13 @@ public class MarketActivity extends Activity {
                             );
                 }
 
+                /*
+                 * Lambda-এর ভিতরে ব্যবহার করার জন্য
+                 * candleTime-কে final করা হয়েছে।
+                 */
+                final String finalCandleTime =
+                        candleTime;
+
                 runOnUiThread(() -> {
 
                     chartView.setMarketData(
@@ -311,7 +318,7 @@ public class MarketActivity extends Activity {
                                     interval +
                                     "\n" +
                                     "Candle: " +
-                                    candleTime +
+                                    finalCandleTime +
                                     "\n" +
                                     "Data: " +
                                     dataStatus
