@@ -103,10 +103,6 @@ public class MainActivity extends Activity {
                 JSONObject json =
                         new JSONObject(result.toString());
 
-                // ==============================
-                // FINAL 1M SIGNAL
-                // ==============================
-
                 final String signal =
                         json.optString("signal", "WAIT");
 
@@ -116,19 +112,11 @@ public class MainActivity extends Activity {
                 final String trend =
                         json.optString("trend", "--");
 
-                // ==============================
-                // PRICE LEVELS
-                // ==============================
-
                 final String support =
                         json.optString("support", "--");
 
                 final String resistance =
                         json.optString("resistance", "--");
-
-                // ==============================
-                // INDICATORS
-                // ==============================
 
                 final String rsi =
                         json.optString("rsi", "--");
@@ -136,42 +124,42 @@ public class MainActivity extends Activity {
                 final String adx =
                         json.optString("adx", "--");
 
-                // ==============================
-                // CONFIRMATION
-                // 5M / 15M / 1H ONLY
-                // ==============================
-
+                /*
+                 * Worker confirmation object
+                 *
+                 * {
+                 *   "1M": "...",
+                 *   "5M": "...",
+                 *   "15M": "...",
+                 *   "1H": "..."
+                 * }
+                 */
                 JSONObject confirmation =
                         json.optJSONObject("confirmation");
 
-                final String m5 =
-                        confirmation != null
-                                ? confirmation.optString("5M", "--")
-                                : "--";
+                String m1 = "--";
+                String m5 = "--";
+                String m15 = "--";
+                String h1 = "--";
 
-                final String m15 =
-                        confirmation != null
-                                ? confirmation.optString("15M", "--")
-                                : "--";
+                if (confirmation != null) {
 
-                final String h1 =
-                        confirmation != null
-                                ? confirmation.optString("1H", "--")
-                                : "--";
+                    m1 = confirmation.optString("1M", "--");
+                    m5 = confirmation.optString("5M", "--");
+                    m15 = confirmation.optString("15M", "--");
+                    h1 = confirmation.optString("1H", "--");
+                }
 
-                // ==============================
-                // CLOSED CANDLE
-                // ==============================
+                final String finalM1 = m1;
+                final String finalM5 = m5;
+                final String finalM15 = m15;
+                final String finalH1 = h1;
 
                 final String closedCandle =
                         json.optString("closed_candle", "--");
 
                 final String candleTime =
                         json.optString("candle_time", "--");
-
-                // ==============================
-                // STRUCTURE
-                // ==============================
 
                 final String structure =
                         json.optString("structure", "--");
@@ -185,16 +173,8 @@ public class MainActivity extends Activity {
                 final String candlePattern =
                         json.optString("candle_pattern", "--");
 
-                // ==============================
-                // MESSAGE
-                // ==============================
-
                 final String message =
                         json.optString("message", "");
-
-                // ==============================
-                // SHOW ON SCREEN
-                // ==============================
 
                 runOnUiThread(() -> {
 
@@ -204,11 +184,11 @@ public class MainActivity extends Activity {
 
                             "EURUSD • 1 MIN\n\n" +
 
-                            "FINAL SIGNAL: " +
-                            signal + "\n" +
+                            "SIGNAL: " +
+                            signal + "\n\n" +
 
                             "CONFIDENCE: " +
-                            confidence + "\n" +
+                            confidence + "\n\n" +
 
                             "TREND: " +
                             trend + "\n\n" +
@@ -225,16 +205,19 @@ public class MainActivity extends Activity {
                             "ADX: " +
                             adx + "\n\n" +
 
-                            "CONFIRMATION / ANALYSIS\n" +
+                            "TIMEFRAME CONFIRMATION\n\n" +
 
-                            "5M  : " +
-                            m5 + "\n" +
+                            "1M : " +
+                            finalM1 + "\n" +
+
+                            "5M : " +
+                            finalM5 + "\n" +
 
                             "15M : " +
-                            m15 + "\n" +
+                            finalM15 + "\n" +
 
-                            "1H  : " +
-                            h1 + "\n\n" +
+                            "1H : " +
+                            finalH1 + "\n\n" +
 
                             "STRUCTURE: " +
                             structure + "\n" +
@@ -252,7 +235,7 @@ public class MainActivity extends Activity {
                             message + "\n\n" +
 
                             "CLOSED CANDLE: " +
-                            closedCandle + "\n" +
+                            closedCandle + "\n\n" +
 
                             "CANDLE TIME: " +
                             candleTime;
@@ -268,7 +251,7 @@ public class MainActivity extends Activity {
 
                         "EURUSD • 1 MIN\n\n" +
 
-                        "FINAL SIGNAL: WAIT\n\n" +
+                        "SIGNAL: WAIT\n\n" +
 
                         "Connection error:\n" +
 
