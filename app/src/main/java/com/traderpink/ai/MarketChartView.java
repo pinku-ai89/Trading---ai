@@ -4,26 +4,71 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MarketChartView extends View {
 
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final List<Candle> candles = new ArrayList<>();
+    private final Paint paint =
+            new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    private final List<Candle> candles =
+            new ArrayList<>();
 
     private double currentPrice = 0.0;
 
+    private float zoom = 1.0f;
+    private float panX = 0f;
+
+    private float lastTouchX;
+    private boolean dragging = false;
+
+    private ScaleGestureDetector scaleDetector;
+
+    private final Runnable timerRunnable =
+            new Runnable() {
+
+                @Override
+                public void run() {
+
+                    invalidate();
+
+                    postDelayed(
+                            this,
+                            1000
+                    );
+                }
+            };
+
     public MarketChartView(Context context) {
+
         super(context);
 
         paint.setStrokeWidth(2f);
-        setBackgroundColor(0xFF101318);
+
+        setBackgroundColor(
+                0xFF101318
+        );
+
+        scaleDetector =
+                new ScaleGestureDetector(
+                        context,
+                        new ScaleListener()
+                );
+
+        post(
+                timerRunnable
+        );
     }
 
     public void setMarketData(JSONObject json) {
@@ -32,25 +77,60 @@ public class MarketChartView extends View {
 
             candles.clear();
 
-            currentPrice = json.optDouble("price", 0.0);
+            currentPrice =
+                    json.optDouble(
+                            "price",
+                            0.0
+                    );
 
-            JSONArray array = json.optJSONArray("candles");
+            JSONArray array =
+                    json.optJSONArray(
+                            "candles"
+                    );
 
             if (array != null) {
 
-                for (int i = 0; i < array.length(); i++) {
+                for (
+                        int i = 0;
+                        i < array.length();
+                        i++
+                ) {
 
-                    JSONObject item = array.getJSONObject(i);
+                    JSONObject item =
+                            array.getJSONObject(i);
 
-                    Candle candle = new Candle();
+                    Candle candle =
+                            new Candle();
 
-                    candle.open = item.optDouble("open");
-                    candle.high = item.optDouble("high");
-                    candle.low = item.optDouble("low");
-                    candle.close = item.optDouble("close");
-                    candle.time = item.optString("time", "");
+                    candle.open =
+                            item.optDouble(
+                                    "open"
+                            );
 
-                    candles.add(candle);
+                    candle.high =
+                            item.optDouble(
+                                    "high"
+                            );
+
+                    candle.low =
+                            item.optDouble(
+                                    "low"
+                            );
+
+                    candle.close =
+                            item.optDouble(
+                                    "close"
+                            );
+
+                    candle.time =
+                            item.optString(
+                                    "time",
+                                    ""
+                            );
+
+                    candles.add(
+                            candle
+                    );
                 }
             }
 
@@ -67,8 +147,17 @@ public class MarketChartView extends View {
 
         if (candles.isEmpty()) {
 
-            paint.setTextSize(40);
-            paint.setColor(0xFFFFFFFF);
+            paint.setStyle(
+                    Paint.Style.FILL
+            );
+
+            paint.setTextSize(
+                    40
+            );
+
+            paint.setColor(
+                    0xFFFFFFFF
+            );
 
             canvas.drawText(
                     "Loading market...",
@@ -80,57 +169,176 @@ public class MarketChartView extends View {
             return;
         }
 
-        float width = getWidth();
-        float height = getHeight();
+        float width =
+                getWidth();
 
-        float left = 30;
-        float right = width - 20;
-        float top = 20;
-        float bottom = height - 30;
+        float height =
+                getHeight();
 
-        double minPrice = Double.MAX_VALUE;
-        double maxPrice = -Double.MAX_VALUE;
+        /*
+         * Chart layout
+         */
 
-        for (Candle c : candles) {
+        float left =
+                25;
 
-            minPrice = Math.min(minPrice, c.low);
-            maxPrice = Math.max(maxPrice, c.high);
+        float right =
+                width - 105;
+
+        float top =
+                25;
+
+        float bottom =
+                height - 65;
+
+        if (right <= left) {
+            right = width - 20;
         }
 
-        double range = maxPrice - minPrice;
+        /*
+         * Find visible candle range
+         */
+
+        int baseVisible =
+                60;
+
+        int visibleCount =
+                Math.max(
+                        10,
+                        Math.min(
+                                candles.size(),
+                                (int)
+                                        (baseVisible / zoom)
+                        )
+                );
+
+        int maxStart =
+                Math.max(
+                        0,
+                        candles.size() -
+                                visibleCount
+                );
+
+        int start =
+                Math.max(
+                        0,
+                        Math.min(
+                                maxStart,
+                                (int)
+                                        panX
+                        )
+                );
+
+        /*
+         * Price range
+         */
+
+        double minPrice =
+                Double.MAX_VALUE;
+
+        double maxPrice =
+                -Double.MAX_VALUE;
+
+        for (
+                int i = start;
+                i < start + visibleCount &&
+                        i < candles.size();
+                i++
+        ) {
+
+            Candle c =
+                    candles.get(i);
+
+            minPrice =
+                    Math.min(
+                            minPrice,
+                            c.low
+                    );
+
+            maxPrice =
+                    Math.max(
+                            maxPrice,
+                            c.high
+                    );
+        }
+
+        if (currentPrice > 0) {
+
+            minPrice =
+                    Math.min(
+                            minPrice,
+                            currentPrice
+                    );
+
+            maxPrice =
+                    Math.max(
+                            maxPrice,
+                            currentPrice
+                    );
+        }
+
+        double range =
+                maxPrice - minPrice;
 
         if (range <= 0) {
             range = 0.0001;
         }
 
-        // Small padding around candles
-        minPrice -= range * 0.08;
-        maxPrice += range * 0.08;
-        range = maxPrice - minPrice;
+        minPrice -=
+                range * 0.08;
 
-        int visibleCount = Math.min(candles.size(), 80);
+        maxPrice +=
+                range * 0.08;
 
-        int start =
-                Math.max(0, candles.size() - visibleCount);
+        range =
+                maxPrice - minPrice;
 
-        float chartWidth = right - left;
+        /*
+         * Background
+         */
 
-        float candleSpace =
-                chartWidth / visibleCount;
+        paint.setStyle(
+                Paint.Style.FILL
+        );
 
-        float bodyWidth =
-                Math.max(4f, candleSpace * 0.55f);
+        paint.setColor(
+                0xFF101318
+        );
 
-        // Horizontal grid lines
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(1f);
-        paint.setColor(0xFF252A31);
+        canvas.drawRect(
+                0,
+                0,
+                width,
+                height,
+                paint
+        );
 
-        for (int i = 1; i < 6; i++) {
+        /*
+         * Grid
+         */
+
+        paint.setStyle(
+                Paint.Style.STROKE
+        );
+
+        paint.setStrokeWidth(
+                1f
+        );
+
+        paint.setColor(
+                0xFF252A31
+        );
+
+        for (
+                int i = 1;
+                i < 7;
+                i++
+        ) {
 
             float y =
                     top +
-                    (bottom - top) * i / 6f;
+                    (bottom - top)
+                            * i / 7f;
 
             canvas.drawLine(
                     left,
@@ -141,16 +349,44 @@ public class MarketChartView extends View {
             );
         }
 
-        // Candles
-        for (int i = start; i < candles.size(); i++) {
+        /*
+         * Candle spacing
+         */
 
-            Candle c = candles.get(i);
+        float chartWidth =
+                right - left;
 
-            int position = i - start;
+        float candleSpace =
+                chartWidth /
+                        visibleCount;
+
+        float bodyWidth =
+                Math.max(
+                        3f,
+                        candleSpace * 0.58f
+                );
+
+        /*
+         * Candles
+         */
+
+        for (
+                int i = start;
+                i < start + visibleCount &&
+                        i < candles.size();
+                i++
+        ) {
+
+            Candle c =
+                    candles.get(i);
+
+            int position =
+                    i - start;
 
             float x =
                     left +
-                    position * candleSpace +
+                    position *
+                            candleSpace +
                     candleSpace / 2f;
 
             float openY =
@@ -192,17 +428,24 @@ public class MarketChartView extends View {
             boolean bullish =
                     c.close >= c.open;
 
-            // Green bullish / Red bearish
             paint.setColor(
                     bullish
                             ? 0xFF20C878
                             : 0xFFFF4D5A
             );
 
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2f);
+            /*
+             * Wick
+             */
 
-            // Wick
+            paint.setStyle(
+                    Paint.Style.STROKE
+            );
+
+            paint.setStrokeWidth(
+                    2f
+            );
+
             canvas.drawLine(
                     x,
                     highY,
@@ -211,31 +454,55 @@ public class MarketChartView extends View {
                     paint
             );
 
-            // Body
+            /*
+             * Body
+             */
+
             float bodyTop =
-                    Math.min(openY, closeY);
+                    Math.min(
+                            openY,
+                            closeY
+                    );
 
             float bodyBottom =
-                    Math.max(openY, closeY);
+                    Math.max(
+                            openY,
+                            closeY
+                    );
 
-            if (bodyBottom - bodyTop < 2f) {
-                bodyBottom = bodyTop + 2f;
+            if (
+                    bodyBottom -
+                            bodyTop < 2f
+            ) {
+
+                bodyBottom =
+                        bodyTop + 2f;
             }
 
-            paint.setStyle(Paint.Style.FILL);
+            paint.setStyle(
+                    Paint.Style.FILL
+            );
 
             RectF body =
                     new RectF(
-                            x - bodyWidth / 2f,
+                            x -
+                                    bodyWidth / 2f,
                             bodyTop,
-                            x + bodyWidth / 2f,
+                            x +
+                                    bodyWidth / 2f,
                             bodyBottom
                     );
 
-            canvas.drawRect(body, paint);
+            canvas.drawRect(
+                    body,
+                    paint
+            );
         }
 
-        // Current price line
+        /*
+         * Current price line
+         */
+
         if (currentPrice > 0) {
 
             float priceY =
@@ -247,9 +514,17 @@ public class MarketChartView extends View {
                             bottom
                     );
 
-            paint.setColor(0xFFFFC107);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(1.5f);
+            paint.setStyle(
+                    Paint.Style.STROKE
+            );
+
+            paint.setStrokeWidth(
+                    1.5f
+            );
+
+            paint.setColor(
+                    0xFFFFC107
+            );
 
             canvas.drawLine(
                     left,
@@ -259,41 +534,318 @@ public class MarketChartView extends View {
                     paint
             );
 
-            paint.setStyle(Paint.Style.FILL);
-            paint.setTextSize(28);
-            paint.setColor(0xFFFFC107);
+            /*
+             * Current price label
+             */
+
+            paint.setStyle(
+                    Paint.Style.FILL
+            );
+
+            paint.setTextSize(
+                    24
+            );
+
+            paint.setColor(
+                    0xFFFFC107
+            );
 
             String priceText =
                     String.format(
-                            java.util.Locale.US,
+                            Locale.US,
                             "%.5f",
                             currentPrice
                     );
 
             canvas.drawText(
                     priceText,
-                    left,
+                    right + 5,
                     Math.max(
-                            top + 25,
-                            priceY - 8
+                            top + 22,
+                            priceY - 5
                     ),
                     paint
             );
         }
 
-        // Latest candle time
-        Candle last =
-                candles.get(candles.size() - 1);
+        /*
+         * Right side PRICE SCALE
+         */
 
-        paint.setTextSize(24);
-        paint.setColor(0xFFB8C0CC);
+        paint.setStyle(
+                Paint.Style.FILL
+        );
+
+        paint.setTextSize(
+                18
+        );
+
+        paint.setColor(
+                0xFFB8C0CC
+        );
+
+        for (
+                int i = 0;
+                i <= 6;
+                i++
+        ) {
+
+            double price =
+                    maxPrice -
+                    (
+                            range *
+                            i /
+                            6.0
+                    );
+
+            float y =
+                    top +
+                    (
+                            bottom -
+                            top
+                    ) *
+                    i /
+                    6f;
+
+            String label =
+                    String.format(
+                            Locale.US,
+                            "%.5f",
+                            price
+                    );
+
+            canvas.drawText(
+                    label,
+                    right + 5,
+                    y + 6,
+                    paint
+            );
+        }
+
+        /*
+         * TIME SCALE
+         */
+
+        paint.setTextSize(
+                17
+        );
+
+        paint.setColor(
+                0xFF8F99A8
+        );
+
+        int timeLabels =
+                Math.min(
+                        6,
+                        visibleCount
+                );
+
+        for (
+                int i = 0;
+                i < timeLabels;
+                i++
+        ) {
+
+            int index =
+                    start +
+                    (
+                            i *
+                            (
+                                    visibleCount - 1
+                            )
+                    ) /
+                    Math.max(
+                            1,
+                            timeLabels - 1
+                    );
+
+            if (
+                    index >=
+                            candles.size()
+            ) {
+                continue;
+            }
+
+            Candle c =
+                    candles.get(index);
+
+            float x =
+                    left +
+                    (
+                            index - start
+                    ) *
+                    candleSpace +
+                    candleSpace / 2f;
+
+            String time =
+                    shortTime(
+                            c.time
+                    );
+
+            canvas.drawText(
+                    time,
+                    x - 25,
+                    height - 20,
+                    paint
+            );
+        }
+
+        /*
+         * Latest candle information
+         */
+
+        Candle last =
+                candles.get(
+                        candles.size() - 1
+                );
+
+        paint.setTextSize(
+                16
+        );
+
+        paint.setColor(
+                0xFFB8C0CC
+        );
 
         canvas.drawText(
-                last.time,
+                "Candle: " +
+                        last.time,
                 left,
-                height - 5,
+                height - 42,
                 paint
         );
+
+        /*
+         * Next candle countdown
+         */
+
+        long now =
+                System.currentTimeMillis();
+
+        long seconds =
+                (now / 1000) % 60;
+
+        long remaining =
+                60 - seconds;
+
+        if (remaining == 60) {
+            remaining = 0;
+        }
+
+        paint.setColor(
+                0xFFFFC107
+        );
+
+        paint.setTextSize(
+                18
+        );
+
+        canvas.drawText(
+                "Next Candle: " +
+                        String.format(
+                                Locale.US,
+                                "00:%02d",
+                                remaining
+                        ),
+                right - 125,
+                height - 42,
+                paint
+        );
+
+        /*
+         * Chart border
+         */
+
+        paint.setStyle(
+                Paint.Style.STROKE
+        );
+
+        paint.setStrokeWidth(
+                1f
+        );
+
+        paint.setColor(
+                0xFF303640
+        );
+
+        canvas.drawRect(
+                left,
+                top,
+                right,
+                bottom,
+                paint
+        );
+    }
+
+    private String shortTime(
+            String value
+    ) {
+
+        if (
+                value == null ||
+                value.length() == 0
+        ) {
+            return "--";
+        }
+
+        try {
+
+            String[] formats = {
+
+                    "yyyy-MM-dd HH:mm:ss",
+                    "yyyy-MM-dd HH:mm",
+                    "yyyy-MM-dd'T'HH:mm:ss"
+            };
+
+            for (
+                    String format :
+                    formats
+            ) {
+
+                try {
+
+                    SimpleDateFormat sdf =
+                            new SimpleDateFormat(
+                                    format,
+                                    Locale.US
+                            );
+
+                    Date date =
+                            sdf.parse(
+                                    value
+                            );
+
+                    if (date != null) {
+
+                        return new SimpleDateFormat(
+                                "HH:mm",
+                                Locale.US
+                        ).format(
+                                date
+                        );
+                    }
+
+                } catch (Exception ignored) {
+                }
+            }
+
+        } catch (Exception ignored) {
+        }
+
+        if (
+                value.length() >= 16
+        ) {
+
+            return value.substring(
+                    11,
+                    Math.min(
+                            16,
+                            value.length()
+                    )
+            );
+        }
+
+        return value;
     }
 
     private float priceToY(
@@ -305,12 +857,178 @@ public class MarketChartView extends View {
     ) {
 
         double position =
-                (price - minPrice) / range;
+                (
+                        price -
+                        minPrice
+                ) /
+                range;
 
         return (float)
-                (bottom -
+                (
+                        bottom -
                         position *
-                                (bottom - top));
+                        (
+                                bottom -
+                                top
+                        )
+                );
+    }
+
+    @Override
+    public boolean onTouchEvent(
+            MotionEvent event
+    ) {
+
+        scaleDetector.onTouchEvent(
+                event
+        );
+
+        switch (
+                event.getActionMasked()
+        ) {
+
+            case MotionEvent.ACTION_DOWN:
+
+                lastTouchX =
+                        event.getX();
+
+                dragging = true;
+
+                return true;
+
+            case MotionEvent.ACTION_MOVE:
+
+                if (
+                        dragging &&
+                        event.getPointerCount()
+                                == 1
+                ) {
+
+                    float dx =
+                            event.getX() -
+                            lastTouchX;
+
+                    /*
+                     * Horizontal chart pan
+                     */
+
+                    float movement =
+                            -dx /
+                            8f;
+
+                    panX += movement;
+
+                    int visibleCount =
+                            Math.max(
+                                    10,
+                                    Math.min(
+                                            candles.size(),
+                                            (int)
+                                                    (
+                                                            60 /
+                                                            zoom
+                                                    )
+                                    )
+                            );
+
+                    int maxStart =
+                            Math.max(
+                                    0,
+                                    candles.size() -
+                                            visibleCount
+                            );
+
+                    panX =
+                            Math.max(
+                                    0,
+                                    Math.min(
+                                            panX,
+                                            maxStart
+                            )
+                            );
+
+                    lastTouchX =
+                            event.getX();
+
+                    invalidate();
+                }
+
+                return true;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+
+                dragging = false;
+
+                return true;
+        }
+
+        return true;
+    }
+
+    private class ScaleListener
+            extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+
+        @Override
+        public boolean onScale(
+                ScaleGestureDetector detector
+        ) {
+
+            zoom *=
+                    detector.getScaleFactor();
+
+            zoom =
+                    Math.max(
+                            0.5f,
+                            Math.min(
+                                    5.0f,
+                                    zoom
+                            )
+                    );
+
+            int visibleCount =
+                    Math.max(
+                            10,
+                            Math.min(
+                                    candles.size(),
+                                    (int)
+                                            (
+                                                    60 /
+                                                    zoom
+                                            )
+                            )
+                    );
+
+            int maxStart =
+                    Math.max(
+                            0,
+                            candles.size() -
+                                    visibleCount
+                    );
+
+            panX =
+                    Math.max(
+                            0,
+                            Math.min(
+                                    panX,
+                                    maxStart
+                            )
+                    );
+
+            invalidate();
+
+            return true;
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+
+        removeCallbacks(
+                timerRunnable
+        );
+
+        super.onDetachedFromWindow();
     }
 
     private static class Candle {
