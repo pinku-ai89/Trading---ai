@@ -49,9 +49,13 @@ public class MarketActivity extends Activity {
     };
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(
+            Bundle savedInstanceState
+    ) {
 
-        super.onCreate(savedInstanceState);
+        super.onCreate(
+                savedInstanceState
+        );
 
         buildScreen();
 
@@ -91,7 +95,9 @@ public class MarketActivity extends Activity {
                 "🤖 Trader Pink AI\nEURUSD • 1 MIN"
         );
 
-        title.setTextSize(21);
+        title.setTextSize(
+                21
+        );
 
         title.setTextColor(
                 0xFFFFFFFF
@@ -104,7 +110,9 @@ public class MarketActivity extends Activity {
                 15
         );
 
-        root.addView(title);
+        root.addView(
+                title
+        );
 
         priceText =
                 new TextView(this);
@@ -113,7 +121,9 @@ public class MarketActivity extends Activity {
                 "Price: Loading..."
         );
 
-        priceText.setTextSize(19);
+        priceText.setTextSize(
+                19
+        );
 
         priceText.setTextColor(
                 0xFFFFC107
@@ -126,17 +136,18 @@ public class MarketActivity extends Activity {
                 10
         );
 
-        root.addView(priceText);
+        root.addView(
+                priceText
+        );
 
         /*
-         * Market chart
-         *
-         * আগের weight-based chart-এর পরিবর্তে
-         * নির্দিষ্ট height দেওয়া হয়েছে যাতে
-         * chart-এর নিচে AI Analysis দেখা যায়।
+         * Market Chart
          */
+
         chartView =
-                new MarketChartView(this);
+                new MarketChartView(
+                        this
+                );
 
         LinearLayout.LayoutParams chartParams =
                 new LinearLayout.LayoutParams(
@@ -163,7 +174,9 @@ public class MarketActivity extends Activity {
                 "Market data loading..."
         );
 
-        statusText.setTextSize(15);
+        statusText.setTextSize(
+                15
+        );
 
         statusText.setTextColor(
                 0xFFB8C0CC
@@ -180,16 +193,21 @@ public class MarketActivity extends Activity {
                 10
         );
 
-        root.addView(statusText);
+        root.addView(
+                statusText
+        );
 
         /*
-         * AI Analysis section
+         * AI Analysis
          */
+
         ScrollView analysisScroll =
                 new ScrollView(this);
 
         analysisView =
-                new MarketAnalysisView(this);
+                new MarketAnalysisView(
+                        this
+                );
 
         analysisScroll.addView(
                 analysisView
@@ -214,14 +232,17 @@ public class MarketActivity extends Activity {
                 analysisParams
         );
 
-        setContentView(root);
+        setContentView(
+                root
+        );
     }
 
     private void loadMarket() {
 
         new Thread(() -> {
 
-            HttpURLConnection connection = null;
+            HttpURLConnection connection =
+                    null;
 
             try {
 
@@ -251,8 +272,10 @@ public class MarketActivity extends Activity {
 
                 InputStream stream;
 
-                if (responseCode >= 200 &&
-                        responseCode < 300) {
+                if (
+                        responseCode >= 200 &&
+                                responseCode < 300
+                ) {
 
                     stream =
                             connection.getInputStream();
@@ -283,17 +306,22 @@ public class MarketActivity extends Activity {
                 String line;
 
                 while (
-                        (line = reader.readLine())
+                        (line =
+                                reader.readLine())
                                 != null
                 ) {
 
-                    result.append(line);
+                    result.append(
+                            line
+                    );
                 }
 
                 reader.close();
 
-                if (responseCode < 200 ||
-                        responseCode >= 300) {
+                if (
+                        responseCode < 200 ||
+                                responseCode >= 300
+                ) {
 
                     throw new Exception(
                             "HTTP " +
@@ -329,9 +357,12 @@ public class MarketActivity extends Activity {
                                 "candle"
                         );
 
-                String candleTime = "--";
+                String candleTime =
+                        "--";
 
-                if (marketCandle != null) {
+                if (
+                        marketCandle != null
+                ) {
 
                     candleTime =
                             marketCandle.optString(
@@ -399,7 +430,8 @@ public class MarketActivity extends Activity {
 
         new Thread(() -> {
 
-            HttpURLConnection connection = null;
+            HttpURLConnection connection =
+                    null;
 
             try {
 
@@ -429,8 +461,10 @@ public class MarketActivity extends Activity {
 
                 InputStream stream;
 
-                if (responseCode >= 200 &&
-                        responseCode < 300) {
+                if (
+                        responseCode >= 200 &&
+                                responseCode < 300
+                ) {
 
                     stream =
                             connection.getInputStream();
@@ -461,17 +495,22 @@ public class MarketActivity extends Activity {
                 String line;
 
                 while (
-                        (line = reader.readLine())
+                        (line =
+                                reader.readLine())
                                 != null
                 ) {
 
-                    result.append(line);
+                    result.append(
+                            line
+                    );
                 }
 
                 reader.close();
 
-                if (responseCode < 200 ||
-                        responseCode >= 300) {
+                if (
+                        responseCode < 200 ||
+                                responseCode >= 300
+                ) {
 
                     throw new Exception(
                             "HTTP " +
@@ -486,6 +525,23 @@ public class MarketActivity extends Activity {
 
                 runOnUiThread(() -> {
 
+                    /*
+                     * AI signal chart-এ পাঠানো হচ্ছে।
+                     *
+                     * এখান থেকেই Support,
+                     * Resistance, Entry,
+                     * SL, TP1, TP2 এবং
+                     * optional Watch Level
+                     * chart-এ যাবে।
+                     */
+                    chartView.setSignalData(
+                            json
+                    );
+
+                    /*
+                     * আগের AI Analysis
+                     * একইভাবে থাকবে।
+                     */
                     analysisView.setSignal(
                             json
                     );
@@ -518,6 +574,14 @@ public class MarketActivity extends Activity {
 
                     } catch (Exception ignored) {
                     }
+
+                    /*
+                     * Error হলে chart-এ
+                     * কোনো Entry/SL/TP দেখাবে না।
+                     */
+                    chartView.setSignalData(
+                            fallback
+                    );
 
                     analysisView.setSignal(
                             fallback
