@@ -27,6 +27,17 @@ public class MarketChartView extends View {
 
     private double currentPrice = 0.0;
 
+    private double support = 0.0;
+    private double resistance = 0.0;
+    private double watchLevel = 0.0;
+
+    private double entry = 0.0;
+    private double sl = 0.0;
+    private double tp1 = 0.0;
+    private double tp2 = 0.0;
+
+    private String signal = "WAIT";
+
     private float zoom = 1.0f;
     private float panX = 0f;
 
@@ -140,6 +151,77 @@ public class MarketChartView extends View {
         }
     }
 
+    /*
+     * AI SIGNAL DATA
+     *
+     * MarketActivity থেকে signal JSON এখানে আসবে।
+     */
+    public void setSignalData(JSONObject json) {
+
+        try {
+
+            signal =
+                    json.optString(
+                            "signal",
+                            "WAIT"
+                    ).toUpperCase(
+                            Locale.US
+                    );
+
+            support =
+                    json.optDouble(
+                            "support",
+                            0.0
+                    );
+
+            resistance =
+                    json.optDouble(
+                            "resistance",
+                            0.0
+                    );
+
+            /*
+             * Watch Level optional.
+             *
+             * Worker যদি watch_level না পাঠায়,
+             * তাহলে 0 থাকবে এবং chart-এ দেখাবে না।
+             */
+            watchLevel =
+                    json.optDouble(
+                            "watch_level",
+                            0.0
+                    );
+
+            entry =
+                    json.optDouble(
+                            "entry",
+                            0.0
+                    );
+
+            sl =
+                    json.optDouble(
+                            "sl",
+                            0.0
+                    );
+
+            tp1 =
+                    json.optDouble(
+                            "tp1",
+                            0.0
+                    );
+
+            tp2 =
+                    json.optDouble(
+                            "tp2",
+                            0.0
+                    );
+
+            invalidate();
+
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
 
@@ -196,7 +278,7 @@ public class MarketChartView extends View {
         }
 
         /*
-         * Find visible candle range
+         * Visible candle range
          */
 
         int baseVisible =
@@ -208,7 +290,10 @@ public class MarketChartView extends View {
                         Math.min(
                                 candles.size(),
                                 (int)
-                                        (baseVisible / zoom)
+                                        (
+                                                baseVisible /
+                                                        zoom
+                                        )
                         )
                 );
 
@@ -224,8 +309,7 @@ public class MarketChartView extends View {
                         0,
                         Math.min(
                                 maxStart,
-                                (int)
-                                        panX
+                                (int) panX
                         )
                 );
 
@@ -275,6 +359,45 @@ public class MarketChartView extends View {
                             maxPrice,
                             currentPrice
                     );
+        }
+
+        /*
+         * Include AI levels in chart price range.
+         *
+         * এতে Support/Resistance/TP/SL
+         * chart-এর বাইরে চলে যাবে না।
+         */
+
+        double[] levels = {
+
+                support,
+                resistance,
+                watchLevel,
+                entry,
+                sl,
+                tp1,
+                tp2
+        };
+
+        for (
+                double level :
+                levels
+        ) {
+
+            if (level > 0) {
+
+                minPrice =
+                        Math.min(
+                                minPrice,
+                                level
+                        );
+
+                maxPrice =
+                        Math.max(
+                                maxPrice,
+                                level
+                        );
+            }
         }
 
         double range =
@@ -337,8 +460,12 @@ public class MarketChartView extends View {
 
             float y =
                     top +
-                    (bottom - top)
-                            * i / 7f;
+                            (
+                                    bottom -
+                                            top
+                            ) *
+                                    i /
+                                    7f;
 
             canvas.drawLine(
                     left,
@@ -385,9 +512,9 @@ public class MarketChartView extends View {
 
             float x =
                     left +
-                    position *
-                            candleSpace +
-                    candleSpace / 2f;
+                            position *
+                                    candleSpace +
+                            candleSpace / 2f;
 
             float openY =
                     priceToY(
@@ -500,6 +627,114 @@ public class MarketChartView extends View {
         }
 
         /*
+         * AI LEVELS
+         */
+
+        drawLevel(
+                canvas,
+                "Support",
+                support,
+                0xFF42A5F5,
+                left,
+                right,
+                minPrice,
+                range,
+                top,
+                bottom
+        );
+
+        drawLevel(
+                canvas,
+                "Resistance",
+                resistance,
+                0xFFFF7043,
+                left,
+                right,
+                minPrice,
+                range,
+                top,
+                bottom
+        );
+
+        drawLevel(
+                canvas,
+                "Watch",
+                watchLevel,
+                0xFFAB47BC,
+                left,
+                right,
+                minPrice,
+                range,
+                top,
+                bottom
+        );
+
+        /*
+         * Entry / SL / TP
+         *
+         * শুধু BUY বা SELL হলে দেখাবে।
+         */
+
+        boolean confirmed =
+                signal.equals("BUY") ||
+                        signal.equals("SELL");
+
+        if (confirmed) {
+
+            drawLevel(
+                    canvas,
+                    "Entry",
+                    entry,
+                    0xFFFFFFFF,
+                    left,
+                    right,
+                    minPrice,
+                    range,
+                    top,
+                    bottom
+            );
+
+            drawLevel(
+                    canvas,
+                    "SL",
+                    sl,
+                    0xFFFF4D5A,
+                    left,
+                    right,
+                    minPrice,
+                    range,
+                    top,
+                    bottom
+            );
+
+            drawLevel(
+                    canvas,
+                    "TP1",
+                    tp1,
+                    0xFF20C878,
+                    left,
+                    right,
+                    minPrice,
+                    range,
+                    top,
+                    bottom
+            );
+
+            drawLevel(
+                    canvas,
+                    "TP2",
+                    tp2,
+                    0xFF00C853,
+                    left,
+                    right,
+                    minPrice,
+                    range,
+                    top,
+                    bottom
+            );
+        }
+
+        /*
          * Current price line
          */
 
@@ -592,20 +827,20 @@ public class MarketChartView extends View {
 
             double price =
                     maxPrice -
-                    (
-                            range *
-                            i /
-                            6.0
-                    );
+                            (
+                                    range *
+                                            i /
+                                            6.0
+                            );
 
             float y =
                     top +
-                    (
-                            bottom -
-                            top
-                    ) *
-                    i /
-                    6f;
+                            (
+                                    bottom -
+                                            top
+                            ) *
+                                    i /
+                                    6f;
 
             String label =
                     String.format(
@@ -648,16 +883,16 @@ public class MarketChartView extends View {
 
             int index =
                     start +
-                    (
-                            i *
                             (
-                                    visibleCount - 1
-                            )
-                    ) /
-                    Math.max(
-                            1,
-                            timeLabels - 1
-                    );
+                                    i *
+                                            (
+                                                    visibleCount - 1
+                                            )
+                            ) /
+                                    Math.max(
+                                            1,
+                                            timeLabels - 1
+                                    );
 
             if (
                     index >=
@@ -671,11 +906,11 @@ public class MarketChartView extends View {
 
             float x =
                     left +
-                    (
-                            index - start
-                    ) *
-                    candleSpace +
-                    candleSpace / 2f;
+                            (
+                                    index - start
+                            ) *
+                                    candleSpace +
+                            candleSpace / 2f;
 
             String time =
                     shortTime(
@@ -777,13 +1012,103 @@ public class MarketChartView extends View {
         );
     }
 
+    /*
+     * Draw one AI level line
+     */
+
+    private void drawLevel(
+            Canvas canvas,
+            String label,
+            double price,
+            int color,
+            float left,
+            float right,
+            double minPrice,
+            double range,
+            float top,
+            float bottom
+    ) {
+
+        if (price <= 0) {
+            return;
+        }
+
+        float y =
+                priceToY(
+                        price,
+                        minPrice,
+                        range,
+                        top,
+                        bottom
+                );
+
+        paint.setStyle(
+                Paint.Style.STROKE
+        );
+
+        paint.setStrokeWidth(
+                label.equals("Entry")
+                        ? 2.5f
+                        : 1.8f
+        );
+
+        paint.setColor(
+                color
+        );
+
+        canvas.drawLine(
+                left,
+                y,
+                right,
+                y,
+                paint
+        );
+
+        /*
+         * Level label
+         */
+
+        paint.setStyle(
+                Paint.Style.FILL
+        );
+
+        paint.setTextSize(
+                15
+        );
+
+        String text =
+                label +
+                        " " +
+                        String.format(
+                                Locale.US,
+                                "%.5f",
+                                price
+                        );
+
+        float labelY =
+                Math.max(
+                        top + 15,
+                        Math.min(
+                                bottom - 3,
+                                y - 4
+                        )
+                );
+
+        canvas.drawText(
+                text,
+                left + 5,
+                labelY,
+                paint
+        );
+    }
+
     private String shortTime(
             String value
     ) {
 
         if (
                 value == null ||
-                value.length() == 0
+                        value.length() == 0
         ) {
             return "--";
         }
@@ -859,18 +1184,18 @@ public class MarketChartView extends View {
         double position =
                 (
                         price -
-                        minPrice
+                                minPrice
                 ) /
-                range;
+                        range;
 
         return (float)
                 (
                         bottom -
-                        position *
-                        (
-                                bottom -
-                                top
-                        )
+                                position *
+                                        (
+                                                bottom -
+                                                        top
+                                        )
                 );
     }
 
@@ -900,21 +1225,17 @@ public class MarketChartView extends View {
 
                 if (
                         dragging &&
-                        event.getPointerCount()
-                                == 1
+                                event.getPointerCount()
+                                        == 1
                 ) {
 
                     float dx =
                             event.getX() -
-                            lastTouchX;
-
-                    /*
-                     * Horizontal chart pan
-                     */
+                                    lastTouchX;
 
                     float movement =
                             -dx /
-                            8f;
+                                    8f;
 
                     panX += movement;
 
@@ -926,7 +1247,7 @@ public class MarketChartView extends View {
                                             (int)
                                                     (
                                                             60 /
-                                                            zoom
+                                                                    zoom
                                                     )
                                     )
                             );
@@ -944,7 +1265,7 @@ public class MarketChartView extends View {
                                     Math.min(
                                             panX,
                                             maxStart
-                            )
+                                    )
                             );
 
                     lastTouchX =
@@ -994,7 +1315,7 @@ public class MarketChartView extends View {
                                     (int)
                                             (
                                                     60 /
-                                                    zoom
+                                                            zoom
                                             )
                             )
                     );
