@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.ScrollView;
 import android.view.Gravity;
 
 import org.json.JSONObject;
@@ -18,12 +19,17 @@ import java.util.Locale;
 
 public class MarketActivity extends Activity {
 
-    private static final String API_URL =
+    private static final String MARKET_API_URL =
             "https://pk-forex-ai.bijondebnath51.workers.dev/api/market?interval=1min";
+
+    private static final String SIGNAL_API_URL =
+            "https://pk-forex-ai.bijondebnath51.workers.dev/api/signal";
 
     private final Handler handler = new Handler();
 
     private MarketChartView chartView;
+    private MarketAnalysisView analysisView;
+
     private TextView priceText;
     private TextView statusText;
 
@@ -33,6 +39,7 @@ public class MarketActivity extends Activity {
         public void run() {
 
             loadMarket();
+            loadSignal();
 
             handler.postDelayed(
                     this,
@@ -49,6 +56,7 @@ public class MarketActivity extends Activity {
         buildScreen();
 
         loadMarket();
+        loadSignal();
 
         handler.postDelayed(
                 refreshTask,
@@ -120,14 +128,20 @@ public class MarketActivity extends Activity {
 
         root.addView(priceText);
 
+        /*
+         * Market chart
+         *
+         * আগের weight-based chart-এর পরিবর্তে
+         * নির্দিষ্ট height দেওয়া হয়েছে যাতে
+         * chart-এর নিচে AI Analysis দেখা যায়।
+         */
         chartView =
                 new MarketChartView(this);
 
         LinearLayout.LayoutParams chartParams =
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        0,
-                        1
+                        360
                 );
 
         chartParams.setMargins(
@@ -168,6 +182,38 @@ public class MarketActivity extends Activity {
 
         root.addView(statusText);
 
+        /*
+         * AI Analysis section
+         */
+        ScrollView analysisScroll =
+                new ScrollView(this);
+
+        analysisView =
+                new MarketAnalysisView(this);
+
+        analysisScroll.addView(
+                analysisView
+        );
+
+        LinearLayout.LayoutParams analysisParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1
+                );
+
+        analysisParams.setMargins(
+                0,
+                10,
+                0,
+                0
+        );
+
+        root.addView(
+                analysisScroll,
+                analysisParams
+        );
+
         setContentView(root);
     }
 
@@ -180,7 +226,9 @@ public class MarketActivity extends Activity {
             try {
 
                 URL url =
-                        new URL(API_URL);
+                        new URL(
+                                MARKET_API_URL
+                        );
 
                 connection =
                         (HttpURLConnection)
@@ -292,10 +340,6 @@ public class MarketActivity extends Activity {
                             );
                 }
 
-                /*
-                 * Lambda-এর ভিতরে ব্যবহার করার জন্য
-                 * candleTime-কে final করা হয়েছে।
-                 */
                 final String finalCandleTime =
                         candleTime;
 
@@ -337,6 +381,146 @@ public class MarketActivity extends Activity {
                     statusText.setText(
                             "Market data error:\n" +
                                     error
+                    );
+                });
+
+            } finally {
+
+                if (connection != null) {
+
+                    connection.disconnect();
+                }
+            }
+
+        }).start();
+    }
+
+    private void loadSignal() {
+
+        new Thread(() -> {
+
+            HttpURLConnection connection = null;
+
+            try {
+
+                URL url =
+                        new URL(
+                                SIGNAL_API_URL
+                        );
+
+                connection =
+                        (HttpURLConnection)
+                                url.openConnection();
+
+                connection.setRequestMethod(
+                        "GET"
+                );
+
+                connection.setConnectTimeout(
+                        10000
+                );
+
+                connection.setReadTimeout(
+                        10000
+                );
+
+                int responseCode =
+                        connection.getResponseCode();
+
+                InputStream stream;
+
+                if (responseCode >= 200 &&
+                        responseCode < 300) {
+
+                    stream =
+                            connection.getInputStream();
+
+                } else {
+
+                    stream =
+                            connection.getErrorStream();
+                }
+
+                if (stream == null) {
+
+                    throw new Exception(
+                            "No signal response"
+                    );
+                }
+
+                BufferedReader reader =
+                        new BufferedReader(
+                                new InputStreamReader(
+                                        stream
+                                )
+                        );
+
+                StringBuilder result =
+                        new StringBuilder();
+
+                String line;
+
+                while (
+                        (line = reader.readLine())
+                                != null
+                ) {
+
+                    result.append(line);
+                }
+
+                reader.close();
+
+                if (responseCode < 200 ||
+                        responseCode >= 300) {
+
+                    throw new Exception(
+                            "HTTP " +
+                                    responseCode
+                    );
+                }
+
+                JSONObject json =
+                        new JSONObject(
+                                result.toString()
+                        );
+
+                runOnUiThread(() -> {
+
+                    analysisView.setSignal(
+                            json
+                    );
+                });
+
+            } catch (Exception e) {
+
+                final String error =
+                        e.getMessage() == null
+                                ? "Unknown error"
+                                : e.getMessage();
+
+                runOnUiThread(() -> {
+
+                    JSONObject fallback =
+                            new JSONObject();
+
+                    try {
+
+                        fallback.put(
+                                "signal",
+                                "WAIT"
+                        );
+
+                        fallback.put(
+                                "message",
+                                "Signal data unavailable: " +
+                                        error
+                        );
+
+                    } catch (Exception ignored) {
+                    }
+
+                    analysisView.setSignal(
+                            fallback
                     );
                 });
 
